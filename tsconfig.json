@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es2017",
+    "types": ["vitest/importMeta"],
+    "target": "es2020",
     "lib": ["esnext"],
     "module": "esnext",
     "moduleResolution": "node",

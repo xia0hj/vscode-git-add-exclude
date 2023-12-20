@@ -7,4 +7,8 @@ export default defineConfig({
   dts: false,
   external: ["vscode"],
   sourcemap: true,
+  treeshake: true,
+  define:{
+    'import.meta.vitest': 'undefined'
+  }
 });
