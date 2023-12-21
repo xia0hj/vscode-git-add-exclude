@@ -21,6 +21,22 @@
   "activationEvents": [
     "onStartupFinished"
   ],
+  "configuration": {
+    "title": "git add exclude",
+    "properties": {
+      "git-add-exclude.blockStartTag": {
+        "type": "string",
+        "default": "@git-add-exclude-start"
+      },
+      "git-add-exclude.blockEndTag": {
+        "type": "string",
+        "default": "@git-add-exclude-end"
+      }
+    }
+  },
+  "extensionDependencies": [
+    "vscode.git"
+  ],
   "scripts": {
     "build": "tsup",
     "eslint": "eslint .",

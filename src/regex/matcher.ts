@@ -5,42 +5,51 @@ type CommentRegex = {
   type: string;
 };
 
-const doubleSlash: CommentRegex = {
+const CommentDoubleSlash: CommentRegex = {
   buildRegex: (tag: string) =>
     RegExp(`^[\\*\\s]*((\\/\\/)|(\\/\\*))[\\*\\s]*${tag}`),
   type: "doubleSlash",
-};
+} as const;
 
-const numberSign: CommentRegex = {
+const CommentNumberSign: CommentRegex = {
   buildRegex: (tag) => RegExp(`^[\\*\\s]*#[\\*\\s]*${tag}`),
   type: "numberSign",
-};
+} as const;
 
-const htmlElement: CommentRegex = {
-  buildRegex: (tag) => RegExp(`^[\\*\\s]*<--[\\*\\s]*${tag}[\\*\\s]*-->`),
+const CommentHtmlElement: CommentRegex = {
+  buildRegex: (tag) => RegExp(`^[\\*\\s]*<\!--[\\*\\s]*${tag}[\\*\\s]*-->`),
   type: "htmlElement",
-};
+} as const;
 
 /**
  * vscode languageId
  * https://code.visualstudio.com/docs/languages/identifiers#_known-language-identifiers
  */
 export const languageCommentMap: { [languageId: string]: CommentRegex[] } = {
-  java: [doubleSlash],
-  javascript: [doubleSlash],
-  javascriptreact: [doubleSlash, htmlElement],
-  typescript: [doubleSlash],
-  typescriptreact: [doubleSlash, htmlElement],
+  java: [CommentDoubleSlash],
+  javascript: [CommentDoubleSlash],
+  javascriptreact: [CommentDoubleSlash, CommentHtmlElement],
+  typescript: [CommentDoubleSlash],
+  typescriptreact: [CommentDoubleSlash, CommentHtmlElement],
 
-  default: [doubleSlash],
+  default: [CommentDoubleSlash],
 } as const;
 
-
 if (import.meta.vitest) {
-  test("Test regex", () => {
-    const tag = "#git-add-exclude-start";
-    expect(
-      doubleSlash.buildRegex(tag).test("  //   #git-add-exclude-start  ")
-    ).toBe(true);
+  const tag = "@git-add-exclude-start";
+  test("Test comment //", () => {
+    const douhleSlashRegex = CommentDoubleSlash.buildRegex(tag);
+    expect(douhleSlashRegex.test(`//${tag}`)).toBe(true);
+    expect(douhleSlashRegex.test(`  //   ${tag}  `)).toBe(true);
   });
+  test("Test comment #", () => {
+    const numberSignRegex = CommentNumberSign.buildRegex(tag);
+    expect(numberSignRegex.test(`#${tag}`)).toBe(true);
+    expect(numberSignRegex.test(`    #    ${tag}   `)).toBe(true);
+  });
+  test("Test comment <!-- -->", () => {
+    const htmlElementRegex= CommentHtmlElement.buildRegex(tag)
+    expect(htmlElementRegex.test(`<!--${tag}-->`)).toBe(true)
+    expect(htmlElementRegex.test(`     <!--    ${tag}  -->`)).toBe(true)
+  })
 }
