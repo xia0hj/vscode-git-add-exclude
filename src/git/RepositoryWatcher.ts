@@ -1,6 +1,7 @@
 import { filterByCommentTag } from "@src/regex/filter";
 import { type Repository } from "@src/git/git_extension_api";
 import * as vscode from "vscode";
+import * as path from 'node:path'
 
 export interface RepositoryInternalApi extends Repository {
   repository: {
@@ -37,11 +38,14 @@ export class RepositoryWatcher implements vscode.Disposable {
           return;
         }
         const config = getExtensionConfig();
-        this.repository.state.indexChanges.forEach(async ({ uri }) => {
+        this.repository.state.indexChanges.forEach(async ({uri}) => {
           const textDocument = await vscode.workspace.openTextDocument(uri);
           const textSplitedByLine: string[] = [];
           for (let line = 0; line < textDocument.lineCount; line++) {
-            textSplitedByLine.push(textDocument.lineAt(line).text);
+            const lineText = textDocument.getText(
+              new vscode.Range(line, 0, line + 1, 0)
+            );
+            textSplitedByLine.push(lineText);
           }
           const stageText = filterByCommentTag({
             languageId: textDocument.languageId,
@@ -50,6 +54,13 @@ export class RepositoryWatcher implements vscode.Disposable {
             endTag: config.blockEndTag,
           });
           this.repository.repository.stage(uri, stageText.join(""));
+
+          const removedCount = textSplitedByLine.length - stageText.length;
+          if(removedCount > 0){
+            
+            vscode.window.showInformationMessage(`added file ${path.basename(uri.path)}, removed ${removedCount} lines.`)
+          }
+          
         });
       }
     );
@@ -65,11 +76,11 @@ function getExtensionConfig() {
 
   const blockStartTag = configGetter.get<string>(
     "blockStartTag",
-    "#git-add-exclude-start"
+    "@git-add-exclude-start"
   );
   const blockEndTag = configGetter.get<string>(
     "blockEndTag",
-    "#git-add-exclude-end"
+    "@git-add-exclude-end"
   );
 
   const extensionConfig = {

@@ -7,6 +7,6 @@ export default defineConfig({
   dts: false,
   external: ["vscode"],
   sourcemap: true,
-  treeshake: true,
+  // treeshake: true, // @todo can not debug with breakpoint when rollup treeshake enable
   define:{ 'import.meta.vitest': 'undefined' }
 });
