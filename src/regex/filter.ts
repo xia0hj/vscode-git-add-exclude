@@ -1,4 +1,5 @@
 import { languageCommentMap } from "@src/regex/matcher";
+import { expect, test } from "vitest";
 
 type FilterParameter = {
   languageId: string;
@@ -7,9 +8,6 @@ type FilterParameter = {
   endTag: string;
 };
 
-/**
- * @todo
- */
 export function filterByCommentTag({
   textSplitedByLine,
   languageId,
@@ -26,10 +24,10 @@ export function filterByCommentTag({
   const commentStartLineMap = new Map<string, number[]>();
 
   /**
-   * matchedStartEnd[n][0] is matched comment start line
-   * matchedStartEnd[n][1] is matched comment end line
+   * tagRange[n][0] is matched comment start line
+   * tagRange[n][1] is matched comment end line
    */
-  const matchedStartEnd: number[][] = [];
+  const tagRange: number[][] = [];
 
   textSplitedByLine.forEach((lineText, lineNumber) => {
     for (const commentRegex of targetCommentRegex) {
@@ -41,43 +39,79 @@ export function filterByCommentTag({
         const startLineStack = commentStartLineMap.get(commentRegex.type);
         const matchedStartLine = startLineStack?.pop();
         if (matchedStartLine != null) {
-          matchedStartEnd.push([matchedStartLine, lineNumber]);
+          tagRange.push([matchedStartLine, lineNumber]);
         }
       }
     }
   });
 
-  if (matchedStartEnd.length === 0) {
+  if (tagRange.length === 0) {
     return textSplitedByLine;
   }
 
-  const mergedStartEnd: number[][] = [matchedStartEnd[0]];
-  matchedStartEnd.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  for (let i = 1; i < matchedStartEnd.length; i++) {
-    const lastRange = mergedStartEnd[mergedStartEnd.length - 1];
-    const curRange = matchedStartEnd[i];
+  const mergedRange: number[][] = [tagRange[0]];
+  tagRange.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  for (let i = 1; i < tagRange.length; i++) {
+    const lastRange = mergedRange[mergedRange.length - 1];
+    const curRange = tagRange[i];
     if (curRange[0] <= lastRange[1]) {
-      lastRange[1] = curRange[1];
+      lastRange[1] = Math.max(lastRange[1], curRange[1]);
     } else {
-      mergedStartEnd.push(curRange);
+      mergedRange.push(curRange);
     }
   }
 
-  const result: string[] = [];
-  for (let i = 0; i < mergedStartEnd.length; i++) {
-    const lastEndLine = i === 0 ? 0 : mergedStartEnd[i - 1][1];
-    const curStartLine = mergedStartEnd[i][0];
+  let result: string[] = [];
+  for (let i = 0; i < mergedRange.length; i++) {
+    const lastEndLine = i === 0 ? -1 : mergedRange[i - 1][1];
+    const curStartLine = mergedRange[i][0];
     if (lastEndLine + 1 < curStartLine) {
-      result.concat(textSplitedByLine.slice(lastEndLine + 1, curStartLine));
+      result = result.concat(textSplitedByLine.slice(lastEndLine + 1, curStartLine));
     }
   }
 
-  const lastEndLine = mergedStartEnd[mergedStartEnd.length - 1][1];
+  const lastEndLine = mergedRange[mergedRange.length - 1][1];
   if (lastEndLine + 1 < textSplitedByLine.length) {
-    result.concat(
+    result = result.concat(
       textSplitedByLine.slice(lastEndLine + 1, textSplitedByLine.length)
     );
   }
 
   return result;
+}
+
+if (import.meta.vitest) {
+  test("Test filter", () => {
+    const textSplitedByLine = [
+      "import { filterByCommentTag } from '@src/regex/filter';",
+      "import { suite, test } from 'mocha';",
+      "",
+      "suite('test filter text', function(){",
+      "//@git-add-exclude-start",
+      "console.log('DO NOT COMMIT THIS LINE !!!');",
+      "//@git-add-exclude-end",
+
+      "         //@git-add-exclude-start",
+      "const foo = 1;",
+      "    //@git-add-exclude-start",
+      "const bar = 2;",
+      "//@git-add-exclude-end",
+      "const baz = 3;",
+      "//@git-add-exclude-end",
+      "const qux = 4;",
+    ];
+
+    const languageId = "javascript";
+    const startTag = "@git-add-exclude-start";
+    const endTag = "@git-add-exclude-end";
+
+    const filterResult = filterByCommentTag({
+      textSplitedByLine,
+      languageId,
+      startTag,
+      endTag,
+    });
+
+    expect(filterResult.length).toBe(5);
+  });
 }
